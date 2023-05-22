@@ -242,16 +242,9 @@ class atu:
         sim = AcadosSim()
         sim.model = self.modelStepIntegrator 
 
-        Sf = self._tl
+        Sf = self._tl/self._integrationSteps
 
         sim.solver_options.T = Sf
-        sim.solver_options.integrator_type = 'ERK'
-        sim.solver_options.num_stages = 4
-        sim.solver_options.num_steps = self._integrationSteps
-        # sim.solver_options.num_steps = 1
-        acados_integrator = AcadosSimSolver(sim)
-
-        sim.solver_options.T = Sf/self._integrationSteps
         sim.solver_options.integrator_type = 'ERK'
         sim.solver_options.num_stages = 4
         # sim.solver_options.num_steps = self._integrationSteps
@@ -273,12 +266,13 @@ class atu:
 
         for i in range(self._integrationSteps): 
 
-            self._integrator.set('x', next_step_sol) 
-            self._integrator.solve()
-            # self._stepIntegrator.set('x', next_step_sol) 
-            # self._stepIntegrator.solve()
-            # next_step_sol = self._stepIntegrator.get('x')
-            next_step_sol = self._integrator.get('x')
+            # self._integrator.set('x', next_step_sol) 
+            # self._integrator.solve()
+            # next_step_sol = self._integrator.get('x')
+            self._stepIntegrator.set('x', next_step_sol) 
+            self._stepIntegrator.solve()
+            next_step_sol = self._stepIntegrator.get('x')
+            
             self._WrenchBVPsolver.set(i+1, 'x', next_step_sol)
             data[i+1, 0:3] = next_step_sol[0:3]
 
@@ -296,6 +290,9 @@ class atu:
             ax.plot3D(data[:, 2], data[:, 1], -data[:, 0])
             plt.show()
             
+    def update_rod_parameters(self, E, md, length, param_num): 
+
+        pass 
 
     def _createPoseBVPSolver(self): 
 
@@ -367,7 +364,7 @@ class atu:
 
         self.ocp1.solver_options.nlp_solver_max_iter = 1
 
-        self._PoseBVPsolver = AcadosOcpSolver(self.ocp1, json_file=f'{self.ocp1.model.name}.json')
+        self._PoseBVPsolver = AcadosOcpSolver(self.ocp1)
         # self._integrator = AcadosSimSolver(self.ocp1, json_file=f'{self.ocp1.model.name}.json')
 
         return self._PoseBVPsolver
@@ -393,13 +390,13 @@ class atu:
         self.ocp.cost.yref_e = np.zeros((nx))
         self.ocp.cost.Vu = np.zeros((ny, nu))
         self.ocp.solver_options.qp_solver_iter_max = 400
-        self.ocp.solver_options.sim_method_num_stages = self._integrationSteps
+        # self.ocp.solver_options.sim_method_num_stages = self._integrationSteps
         # self.ocp.solver_options.sim_method_num_stages = 4
         self.ocp.solver_options.qp_solver_warm_start = 2
 
         # self.ocp.solver_options.levenberg_marquardt = 10.0
 
-        self.ocp.solver_options.levenberg_marquardt = 10.0
+        self.ocp.solver_options.levenberg_marquardt = 0.1
 
         # self.ocp.solver_options.levenberg_marquardt = 1.0
         self.ocp.solver_options.regularize_method = 'CONVEXIFY'
@@ -443,7 +440,7 @@ class atu:
         self.ocp.solver_options.nlp_solver_max_iter = 1
 
         self._WrenchBVPsolver = AcadosOcpSolver(self.ocp)
-        self._integrator = AcadosSimSolver(self.ocp)
+        # self._integrator = AcadosSimSolver(self.ocp)
 
         # return self._WrenchBVPsolver, self._integrator
 
