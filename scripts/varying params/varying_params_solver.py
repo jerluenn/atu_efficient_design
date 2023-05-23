@@ -4,6 +4,7 @@ from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver, AcadosS
 from casadi import *
 from matplotlib import pyplot as plt 
 import pandas as pd
+from datetime import datetime
 
 def main(min_, max_, num_it, num_solver_it, param_num, local_val, num_it_local): 
 
@@ -25,7 +26,7 @@ def main(min_, max_, num_it, num_solver_it, param_num, local_val, num_it_local):
 
     array_ = np.linspace(min_, max_, num_it) 
     correct_sol = np.zeros((6, num_it))   
-    states = np.zeros((18, num_it, num_solver_it))
+    states = np.zeros((18, num_it, num_it_local+1))
 
     for k in range(num_it):
 
@@ -33,7 +34,7 @@ def main(min_, max_, num_it, num_solver_it, param_num, local_val, num_it_local):
 
             atu_obj.getWrenchBVPsolver().solve()
 
-            if atu_obj.getWrenchBVPsolver().get_cost() < 1e-5: 
+            if atu_obj.getWrenchBVPsolver().get_cost() < 1e-7: 
                 
                 initial_solution[7:13] = atu_obj.getWrenchBVPsolver().get(0, 'x')[7:13]
                 correct_sol[:, k] = initial_solution[7:13]
@@ -42,6 +43,7 @@ def main(min_, max_, num_it, num_solver_it, param_num, local_val, num_it_local):
 
             else: 
 
+                correct_sol[:, k] = initial_solution[7:13]
                 solved = 0 
 
         if solved == 0: 
@@ -72,13 +74,39 @@ def main(min_, max_, num_it, num_solver_it, param_num, local_val, num_it_local):
             initial_solution[11] = sol_around_My[n]
             atu_obj.getOneStepIntegrator().set('x', initial_solution)
             atu_obj.getOneStepIntegrator().solve()            
-            #change this!
             states[0:16, k, n] = atu_obj.getOneStepIntegrator().get('x')
             states[16, k, n] = np.linalg.norm(atu_obj.getOneStepIntegrator().get('x')[7:13])
             sens = atu_obj.getOneStepIntegrator().get('S_forw')
             states[17, k, n] = np.linalg.norm(sens)/np.linalg.norm(np.linalg.pinv(sens))
 
+    savestates = states.reshape((-1, states.shape[-1]))
+    current_datetime = datetime.now()
+    current_datetime_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    np.savetxt('states' + current_datetime_str + '.csv', savestates, delimiter=',')
+
+def test_plot(): 
+
+    # tether_length = 1.1 
+    tether_length = 1.5
+    E = 1.0e9 
+    ir = 0.0006
+    or_ = 0.002 
+    shear_mod = 0.75e9 
+    md = 0.035 
+
+    atu_obj = atu(E, tether_length, ir, or_, shear_mod, md) 
+    initial_solution = np.zeros((16, ))
+    initial_solution[3] = 1.0 
+    initial_solution[7] = tether_length*md*9.81
+    # initial_solution[11] = 0.09144 # 1.1
+    initial_solution[11] = 0.1095686
+    initial_solution[14] = E
+    initial_solution[15] = md
+    atu_obj.initialise_WrenchBVP_solution(initial_solution, 1)
+
+
 
 if __name__ == "__main__":
 
-    main(1.0e9, 1.0000000005e9, 10, 1000, 0, 0.00005, 2) 
+    test_plot()
+    # main(1.0e9, 1.00000005e9, 10, 1000, 0, 0.00005, 2) 

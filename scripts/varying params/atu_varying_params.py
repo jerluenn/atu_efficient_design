@@ -264,6 +264,8 @@ class atu:
         self._oneStepintegrator.set('x', next_step_sol)
         self._oneStepintegrator.solve()
 
+        print("Obj fn: ", np.linalg.norm(self._oneStepintegrator.get('x')[7:13]))
+
         for i in range(self._integrationSteps): 
 
             # self._integrator.set('x', next_step_sol) 
@@ -396,7 +398,7 @@ class atu:
 
         # self.ocp.solver_options.levenberg_marquardt = 10.0
 
-        self.ocp.solver_options.levenberg_marquardt = 0.1
+        self.ocp.solver_options.levenberg_marquardt = 0.001
 
         # self.ocp.solver_options.levenberg_marquardt = 1.0
         self.ocp.solver_options.regularize_method = 'CONVEXIFY'
